@@ -1,0 +1,3 @@
+[submodule "irene"]
+	path = irene
+	url = https://github.com/Andre-LA/irene.git
