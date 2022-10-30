@@ -1,0 +1,38 @@
+-- nene
+local Nene = require 'nene'
+
+-- irene
+local EntitiesRemoved = require 'irene.managers.entities_removed'
+
+-- game
+local settings = require 'settings'
+local messenger = require 'managers.messenger'
+local Scene = require 'managers.scene'
+
+-- main
+local ok, nene <close> = Nene.init('Praia Games the game', settings.window_size.x, settings.window_size.y)
+assert(ok, "error: nene couldn't be initialized")
+
+defer
+  EntitiesRemoved.destroy()
+end
+
+local scene = Scene.open()
+defer Scene.close() end
+
+messenger.set('flying_food_launched', function() scene:on_flying_food_launched() end)
+messenger.set('flying_food_fallen'  , function() scene:on_flying_food_fallen()   end)
+messenger.set('flying_food_catch'   , function() scene:on_flying_food_catch()    end)
+
+-- init Scene
+repeat
+  nene:poll_events()
+
+  scene:update()
+
+  nene:render_clear()
+
+  scene:draw()
+
+  nene:render_present()
+until nene.quit

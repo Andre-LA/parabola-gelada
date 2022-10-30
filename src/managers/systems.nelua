@@ -1,0 +1,60 @@
+-- rotor
+local system = require 'rotor.system'
+local rotor_concepts = require 'rotor.concepts'
+
+-- irene
+local VelocitySystem = require 'irene.systems.velocity_system'
+local CollisionSystem = require 'irene.systems.collision_system'
+local GravitySystem = require 'irene.systems.gravity_system'
+
+local PixelArtCamera = require 'irene.entities.pixelart_camera'
+
+-- game
+local player = require 'entities.player'
+local clients = require 'entities.clients'
+local flying_food = require 'entities.flying_food'
+
+-- systems manager
+local Systems = @record{
+  movement_system: system(player.MovementSystem.run),
+  flying_food_system: system(flying_food.System.run),
+
+  collision_system: system(CollisionSystem.run),
+  gravity_system: system(GravitySystem.run),
+  velocity_system: system(VelocitySystem.run),
+
+  pixelart_camera_begin: system(PixelArtCamera.System.render_begin),
+  pixelart_camera_draw_screens: system(PixelArtCamera.System.draw_screens),
+  pixelart_camera_end: system(PixelArtCamera.System.render_end),
+
+}
+
+function Systems:run(sysname: string <comptime>, pre_run: boolean <comptime>, post_run: boolean <comptime>)
+  ## if pre_run.value then
+    self.#|sysname.value|#.data:pre_run()
+  ## end
+
+  self.#|sysname.value|#:run(
+    &clients.storage,
+    &player.storage,
+    &flying_food.storage
+  )
+
+  ## if post_run.value then
+    self.#|sysname.value|#.data:post_run()
+  ## end
+end
+
+function Systems:run_entity(entity: rotor_concepts.an_entity_ptr, sysname: string <comptime>, pre_run: boolean <comptime>, post_run: boolean <comptime>)
+  ## if pre_run.value then
+    self.#|sysname.value|#.data:pre_run()
+  ## end
+
+  self.#|sysname.value|#:run(entity)
+
+  ## if post_run.value then
+    self.#|sysname.value|#.data:post_run()
+  ## end
+end
+
+return Systems

@@ -1,0 +1,49 @@
+-- nene
+local Vec2 = require 'nene.math.vec2'
+local Rect = require 'nene.math.rect'
+
+-- rotor
+local entity = require 'rotor.entity'
+local derived_entity = require 'rotor.derived_entity'
+local rotor_concepts = require 'rotor.concepts'
+
+-- irene
+local EntityData = require 'irene.components.entity_data'
+local Position = require 'irene.components.position'
+local Collider = require 'irene.components.collider'
+local Velocity = require 'irene.components.velocity'
+
+-- game
+local EntityMask = require 'entities.mask'
+local BasicEntity = require 'entities.basic_entity'
+
+-- movable entity
+local MovableEntity <nickname 'MovableEntity'> = @derived_entity(BasicEntity, record{
+  velocity: Velocity,
+})
+
+local a_movable_entity_ptr = #[rotor_concepts.value.an_entity_ptr_with({
+  EntityData.value,
+  Position.value,
+  Collider.value,
+  Velocity.value
+})]#
+
+local MovableEntity.Inputs = @record{
+  basic_entity: BasicEntity.Inputs,
+  velocity: record{
+    final_velocity: Vec2,
+  }
+}
+
+function MovableEntity.derived_init(movable_entity: a_movable_entity_ptr, inputs: MovableEntity.Inputs)
+  BasicEntity.derived_init(movable_entity, inputs.basic_entity)
+
+  movable_entity.velocity = {
+    active = true,
+    use_deltatime = true,
+    final_velocity = inputs.velocity.final_velocity,
+  }
+end
+
+return MovableEntity
