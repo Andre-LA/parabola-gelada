@@ -1,0 +1,29 @@
+-- nene
+local Vec2 = require 'nene.math.vec2'
+
+-- rotor
+local storage = require 'rotor.storage'
+local GenIdx = require 'rotor.gen_idx'
+
+-- irene
+local PixelArtCamera = require 'irene.entities.pixelart_camera'
+
+-- game
+local settings = require 'settings'
+
+-- camera entity
+local camera = @record{}
+local camera.storage: storage(PixelArtCamera, 1)
+
+function camera.spawn(pos: Vec2): (boolean, GenIdx, *PixelArtCamera)
+  local ok, id, pixel_camera = PixelArtCamera.spawn(
+    &camera.storage,
+    pos,
+    {},
+    settings.scale
+  )
+
+  return ok, id, pixel_camera
+end
+
+return camera

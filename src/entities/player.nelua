@@ -1,0 +1,92 @@
+-- nene
+local Nene = require 'nene'
+local Vec2 = require 'nene.math.vec2'
+
+-- rotor
+local entity = require 'rotor.entity'
+local derived_entity = require 'rotor.derived_entity'
+local storage = require 'rotor.storage'
+local component = require 'rotor.component'
+local GenIdx = require 'rotor.gen_idx'
+
+-- irene
+local EntityData = require 'irene.components.entity_data'
+local Position = require 'irene.components.position'
+local Collider = require 'irene.components.collider'
+local Velocity = require 'irene.components.velocity'
+
+-- game
+local EntityMask = require 'entities.mask'
+local MovableEntity = require 'entities.movable_entity'
+
+-- player namespace
+local player = @record{}
+
+-- player component
+local player.Component <nickname 'player.Component'> = @component(record{
+  mov_speed: number,
+})
+
+-- player entity
+local player.Entity <nickname 'player.Entity'> = @derived_entity(MovableEntity, record{
+  player_comp: player.Component,
+})
+
+local player.storage: storage(player.Entity, 1)
+
+function player.Entity.init(pos: Vec2): player.Entity
+  local player: player.Entity;
+
+  MovableEntity.derived_init(&player, {
+    basic_entity = {
+      entity_data = {
+        mask = EntityMask.Player
+      },
+
+      position = {
+        local_pos = pos,
+      },
+
+      collider = {
+        hitbox = { 0, 0 , 15, 15 },
+      },
+    }
+  })
+
+  player.player_comp = {
+    mov_speed = 15*8,
+  }
+
+  return player
+end
+
+function player.Entity.spawn(pos: Vec2): (boolean, GenIdx, *player.Entity)
+  local ok, id, player = player.storage:push(player.Entity.init(pos))
+  player.entity_data.id = id
+  return ok, id, player
+end
+
+-- player mov system
+local player.MovementSystem = @record{}
+
+local player.MovementSystem.Filter = @record{
+  player_comp: *player.Component,
+  velocity: *Velocity,
+}
+
+function player.MovementSystem:run(c: player.MovementSystem.Filter)
+  local nene = Nene.instance()
+
+  local is_left_held = nene:get_scancode(Nene.Scancode.Left)
+  local is_right_held = nene:get_scancode(Nene.Scancode.Right)
+
+  if is_left_held then
+    c.velocity.final_velocity = { x = -c.player_comp.mov_speed }
+  elseif is_right_held then
+    c.velocity.final_velocity = { x = c.player_comp.mov_speed }
+  else
+    c.velocity.final_velocity = { x = 0 }
+  end
+end
+
+return player

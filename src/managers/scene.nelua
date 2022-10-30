@@ -1,0 +1,205 @@
+-- nene
+local Nene = require 'nene'
+local Vec2 = require 'nene.math.vec2'
+
+-- rotor
+local GenIdx = require 'rotor.gen_idx'
+
+-- irene
+local EntitiesRemoved = require 'irene.managers.entities_removed'
+
+-- game
+local settings = require 'settings'
+local Systems = require 'managers.systems'
+
+local camera = require 'entities.camera'
+local clients = require 'entities.clients'
+local player = require 'entities.player'
+local flying_food = require 'entities.flying_food'
+
+-- scene manager
+local Scene = @record{
+  camera_id: GenIdx,
+  player_id: GenIdx,
+  clients_id: GenIdx,
+  flying_food_spawners: [7]flying_food.Spawner,
+  current_spawner: usize,
+  active_ice_creams: byte,
+  remaining_chances: byte,
+}
+
+local systems: Systems
+
+function Scene:set_game_over()
+  print'game over'
+end
+
+function Scene:set_game_win()
+  print'game win'
+end
+
+function Scene:get_current_spawner(): *flying_food.Spawner
+  return &self.flying_food_spawners[self.current_spawner]
+end
+
+function Scene:start_next_wave()
+  local nene = Nene.instance()
+
+  local there_is_remaining_spawners = self.current_spawner < #self.flying_food_spawners - 1
+
+  if there_is_remaining_spawners then
+    self.current_spawner = self.current_spawner + 1
+    self:get_current_spawner().start_time = nene.current_time
+    print('next wave starting: ', self.current_spawner)
+  else
+    self:set_game_win()
+  end
+end
+
+function Scene:on_flying_food_launched()
+  self.active_ice_creams = self.active_ice_creams + 1
+end
+
+function Scene:on_flying_food_fallen()
+  self.active_ice_creams = self.active_ice_creams - 1
+  self.remaining_chances = self.remaining_chances - 1
+
+  if self.active_ice_creams == 0 then
+    if self.remaining_chances == 0 then
+      self:set_game_over()
+    else
+      self:start_next_wave()
+    end
+  end
+end
+
+function Scene:on_flying_food_catch()
+  if self.active_ice_creams > 0 then
+    self.active_ice_creams = self.active_ice_creams - 1
+  end
+
+  print('->', self.active_ice_creams )
+
+  if self.active_ice_creams == 0 then
+    self:start_next_wave()
+  end
+end
+
+function Scene.open(): Scene
+  local nene = Nene.instance()
+
+  local scene: Scene = {
+    remaining_chances = 3
+  }
+
+  do -- spawn camera
+    local ok, id, pixel_camera = camera.spawn()
+    assert(ok, "Camera couldn't be spawned")
+
+    scene.camera_id = id
+  end
+
+  do -- spawn player
+    local ok, id, player_entity = player.Entity.spawn({32, settings.screen_size.y - 15})
+    assert(ok, "Player couldn't be spawned")
+
+    scene.player_id = id
+  end
+
+  do -- spawn clients
+    local ok, id, clients_entity = clients.Entity.spawn({settings.screen_size.x - 32, settings.screen_size.y - 32})
+    assert(ok, "Clients couldn't be spawned")
+
+    scene.clients_id = id
+  end
+
+  do -- set spawners
+    local start_pos: Vec2 = { 0, 40 }
+
+    scene.flying_food_spawners = {
+      {
+        pos = start_pos,
+        start_time = nene.current_time,
+        interval = 1000,
+        count = 1,
+      },
+
+      {
+        pos = start_pos,
+        start_time = nene.current_time,
+        interval = 900,
+        count = 2,
+      },
+
+      {
+        pos = start_pos,
+        interval = 500,
+        count = 4,
+      },
+
+      {
+        pos = start_pos,
+        interval = 2700,
+        count = 3,
+      },
+
+      {
+        pos = start_pos,
+        interval = 700,
+        count = 6,
+      },
+
+      {
+        pos = start_pos,
+        interval = 800,
+        count = 8,
+      },
+
+      {
+        pos = start_pos,
+        interval = 1100,
+        count = 7,
+      },
+    }
+  end
+
+  scene:start_next_wave()
+  scene:start_next_wave()
+  scene:start_next_wave()
+
+  return scene
+end
+
+function Scene:update()
+  self:get_current_spawner():update()
+
+  systems:run('movement_system', false, false)
+  systems:run('flying_food_system', false, false)
+
+  systems:run('gravity_system', false, false)
+  systems:run('velocity_system', false, false)
+
+  systems:run('collision_system', true, true)
+end
+
+function Scene:draw()
+  local ok, pixel_camera = camera.storage:mget(self.camera_id)
+  assert(ok, "pixel art camera couldn't be found")
+
+  systems:run_entity(pixel_camera, 'pixelart_camera_begin', false, false)
+
+  systems.collision_system.data:draw_hitboxes()
+
+  systems:run_entity(pixel_camera, 'pixelart_camera_end', false, false)
+  systems:run_entity(pixel_camera, 'pixelart_camera_draw_screens', false, false)
+end
+
+function Scene:close()
+  player.storage:clear()
+  flying_food.storage:clear()
+  clients.storage:clear()
+
+  EntitiesRemoved.clear()
+end
+
+return Scene

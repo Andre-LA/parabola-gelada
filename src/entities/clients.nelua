@@ -1,0 +1,55 @@
+-- nene
+local Nene = require 'nene'
+local Vec2 = require 'nene.math.vec2'
+
+-- rotor
+local entity = require 'rotor.entity'
+local derived_entity = require 'rotor.derived_entity'
+local storage = require 'rotor.storage'
+local component = require 'rotor.component'
+local GenIdx = require 'rotor.gen_idx'
+
+-- irene
+local EntityData = require 'irene.components.entity_data'
+local Position = require 'irene.components.position'
+local Collider = require 'irene.components.collider'
+local Velocity = require 'irene.components.velocity'
+
+-- game
+local EntityMask = require 'entities.mask'
+local BasicEntity = require 'entities.basic_entity'
+
+-- clients
+local clients = @record{}
+
+-- clients entity
+local clients.Entity <nickname 'clients.Entity'> = @derived_entity(BasicEntity, record{})
+local clients.storage: storage(clients.Entity, 1)
+
+function clients.Entity.init(pos: Vec2): clients.Entity
+  local clients_entity: clients.Entity
+
+  BasicEntity.derived_init(&clients_entity, {
+    entity_data = {
+      mask = EntityMask.Clients,
+    },
+
+    position = {
+      local_pos = pos,
+    },
+
+    collider = {
+      hitbox = {0, 0 , 128, 32},
+    }
+  })
+
+  return clients_entity
+end
+
+function clients.Entity.spawn(pos: Vec2): (boolean, GenIdx, *clients.Entity)
+  local ok, id, clients_entity = clients.storage:push(clients.Entity.init(pos))
+  clients_entity.entity_data.id = id
+  return ok, id, clients_entity
+end
+
+return clients

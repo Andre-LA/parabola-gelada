@@ -1,0 +1,21 @@
+local messenger = @record{}
+
+local MessageCallback = @function(): void
+
+local messages = @record{}
+
+local messages.flying_food_launched: MessageCallback
+local messages.flying_food_catch: MessageCallback
+local messages.flying_food_fallen: MessageCallback
+
+function messenger.set(fn_name: string <comptime>, fn: MessageCallback)
+  messages.#|fn_name.value|# = fn
+end
+
+function messenger.call(fn_name: string <comptime>)
+  if messages.#|fn_name.value|# then
+    messages.#|fn_name.value|#()
+  end
+end
+
+return messenger

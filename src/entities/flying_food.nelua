@@ -1,0 +1,187 @@
+-- nelua
+local math = require 'math'
+
+-- nene
+local Nene = require 'nene'
+local Vec2 = require 'nene.math.vec2'
+
+-- rotor
+local entity = require 'rotor.entity'
+local derived_entity = require 'rotor.derived_entity'
+local storage = require 'rotor.storage'
+local component = require 'rotor.component'
+local GenIdx = require 'rotor.gen_idx'
+
+-- irene
+local EntityData = require 'irene.components.entity_data'
+local Position = require 'irene.components.position'
+local Collider = require 'irene.components.collider'
+local Velocity = require 'irene.components.velocity'
+local Gravity = require 'irene.components.gravity'
+
+-- game
+local settings = require 'settings'
+local EntityMask = require 'entities.mask'
+local BasicEntity = require 'entities.basic_entity'
+local MovableEntity = require 'entities.movable_entity'
+local messenger = require 'managers.messenger'
+
+-- flying food namespace
+local flying_food = @record{}
+
+-- flying food component
+local flying_food.Component <nickname 'flying_food.Component'> = @component(record{
+  slowdown_mul: number,
+  vel_x_mul: number,
+  x_speed: number,
+  is_flying: boolean,
+})
+
+-- flying food entity
+local flying_food.Entity <nickname 'flying_food.Entity'> = @derived_entity(MovableEntity, record{
+  flying_food_comp: flying_food.Component,
+  gravity: Gravity,
+})
+local flying_food.storage: storage(flying_food.Entity, 16)
+
+function flying_food.Entity:fell_on_ground()
+  self.flying_food_comp.is_flying = false
+
+  self.velocity.active = false
+  self.velocity.final_velocity = {}
+
+  self.collider.active = false
+  self.gravity.active = false
+
+  messenger.call'flying_food_fallen'
+
+  -- TODO change sprite
+end
+
+function flying_food.Entity.destroy(id: GenIdx)
+  BasicEntity.destroy(id, EntityMask.FlyingFood, &flying_food.storage)
+end
+
+function flying_food.Entity.on_begin_intersection(collision: Collider.CollisionData)
+  switch collision.other.entity_data.mask do
+  case EntityMask.Player then
+    local ok, flying_food_entity = flying_food.storage:mget(collision.self.entity_data.id)
+    check(ok, "flying food couldn't be found")
+
+    if ok then
+      flying_food_entity.velocity.final_velocity.y = -flying_food_entity.velocity.final_velocity.y
+      flying_food_entity.flying_food_comp.vel_x_mul = 1.0
+    end
+
+  case EntityMask.Clients then
+    messenger.call'flying_food_catch'
+    flying_food.Entity.destroy(collision.self.entity_data.id)
+  end
+end
+
+function flying_food.Entity.init(pos: Vec2): flying_food.Entity
+  local X_SPEED <comptime> = 32.0
+
+  local flying_food_entity: flying_food.Entity;
+
+  MovableEntity.derived_init(&flying_food_entity, {
+    basic_entity = {
+      entity_data = {
+        mask = EntityMask.FlyingFood
+      },
+
+      position = {
+        local_pos = pos,
+      },
+
+      collider = {
+        hitbox = { 0, 0 , 8, 8 },
+        intersection_mask = EntityMask.Player | EntityMask.Clients,
+        on_begin_intersection = flying_food.Entity.on_begin_intersection,
+      },
+    },
+
+    velocity = {
+      final_velocity = { X_SPEED, -60 }
+    },
+  })
+
+  flying_food_entity.flying_food_comp = {
+    slowdown_mul = 0.99,
+    vel_x_mul = 1.0,
+    x_speed = X_SPEED,
+    is_flying = true,
+  }
+
+  flying_food_entity.gravity = {
+    active = true,
+    direction = { 0, 1 },
+    acceleration = 60,
+  }
+
+  return flying_food_entity
+end
+
+function flying_food.Entity.spawn(pos: Vec2): (boolean, GenIdx, *flying_food.Entity)
+  local ok, id, flying_food = flying_food.storage:push(flying_food.Entity.init(pos))
+  flying_food.entity_data.id = id
+
+  messenger.call'flying_food_launched'
+
+  return ok, id, flying_food
+end
+
+-- flying food system
+local flying_food.System = @record{}
+
+local flying_food.System.Filter = @record{
+  position: *Position,
+  flying_food_comp: *flying_food.Component,
+  velocity: *Velocity,
+}
+
+function flying_food.System:run(c: flying_food.System.Filter, flying_food_entity: *flying_food.Entity)
+  -- don't run system if it fell on ground
+  if not flying_food_entity.flying_food_comp.is_flying then
+    return
+  end
+
+  -- desaccelerate horizontal velocity
+  c.velocity.final_velocity.x = c.flying_food_comp.x_speed * c.flying_food_comp.vel_x_mul
+  c.flying_food_comp.vel_x_mul = math.clamp(c.flying_food_comp.vel_x_mul * c.flying_food_comp.slowdown_mul, 0.0, 1.0)
+
+  -- detect if it fell on ground
+  if c.position:final_pos().y > settings.screen_size.y - 6 then
+    flying_food_entity:fell_on_ground()
+  end
+end
+
+-- flying food spawner
+local flying_food.Spawner <nickname 'flying_food.Spawner'> = @record{
+  pos: Vec2,
+  start_time: int32,
+  interval: int32,
+  count: integer,
+}
+
+function flying_food.Spawner:update()
+  if self.count <= 0 then
+    return
+  end
+
+  local nene = Nene.instance()
+
+
+  local cur_time: int32 = nene.current_time
+  local diff = cur_time - self.start_time
+
+  if diff >= self.interval then
+    self.start_time = cur_time
+    self.count = self.count - 1
+
+    local ok = flying_food.Entity.spawn(self.pos)
+    check(ok, "flying food entity couldn't be spawned")
+  end
+end
+
+return flying_food

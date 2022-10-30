@@ -1,0 +1,12 @@
+-- nene
+local Vec2i = require 'nene.math.vec2i'
+
+-- settings
+local settings = @record{}
+
+local settings.scale <comptime> = #[DEV_SCALE or 5]#
+
+local settings.screen_size: Vec2i <const> = { 240, 135 }
+local settings.window_size: Vec2i <const> = settings.screen_size * settings.scale
+
+return settings
