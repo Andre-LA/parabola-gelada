@@ -10,6 +10,8 @@ local Resources = @record{
   player: TextureAtlas,
   scenario_bg: TextureAtlas,
   scenario_bg_sky: TextureAtlas,
+
+  flying_food: TextureAtlas,
 }
 
 local Resources.res: Resources

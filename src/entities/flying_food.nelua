@@ -25,6 +25,7 @@ local EntityMask = require 'entities.mask'
 local BasicEntity = require 'entities.basic_entity'
 local MovableEntity = require 'entities.movable_entity'
 local messenger = require 'managers.messenger'
+local Resources = require 'res'
 
 -- flying food namespace
 local flying_food = @record{}
@@ -94,6 +95,11 @@ function flying_food.Entity.init(pos: Vec2): flying_food.Entity
         local_pos = pos,
       },
 
+      sprite = {
+        spritesheet = Resources.res.flying_food,
+        current_animation = { to = 0, fps = 0 }
+      },
+
       collider = {
         hitbox = { 0, 0 , 8, 8 },
         intersection_mask = EntityMask.Player | EntityMask.Clients,
@@ -148,6 +154,8 @@ function flying_food.System:run(c: flying_food.System.Filter, flying_food_entity
     return
   end
 
+  local nene = Nene.instance()
+
   -- desaccelerate horizontal velocity
   c.velocity.final_velocity.x = c.flying_food_comp.x_speed * c.flying_food_comp.vel_x_mul
   c.flying_food_comp.vel_x_mul = math.clamp(c.flying_food_comp.vel_x_mul * c.flying_food_comp.slowdown_mul, 0.0, 1.0)
@@ -155,6 +163,9 @@ function flying_food.System:run(c: flying_food.System.Filter, flying_food_entity
   -- detect if it fell on ground
   if c.position:final_pos().y > settings.screen_size.y - 6 then
     flying_food_entity:fell_on_ground()
+  else
+  -- otherwise, rotate
+    flying_food_entity.sprite.angle = flying_food_entity.sprite.angle + 1 * nene.delta_time
   end
 end
 
