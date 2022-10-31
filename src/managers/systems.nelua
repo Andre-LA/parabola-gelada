@@ -6,6 +6,10 @@ local rotor_concepts = require 'rotor.concepts'
 local VelocitySystem = require 'irene.systems.velocity_system'
 local CollisionSystem = require 'irene.systems.collision_system'
 local GravitySystem = require 'irene.systems.gravity_system'
+local SpritePainterSystem = require 'irene.systems.sprite_painter_system'
+local SpriteAnimationSystem = require 'irene.systems.sprite_animation'
+local PositionHierarchySystem = require 'irene.systems.position_hierarchy'
+local CameraSystem = require 'irene.systems.camera_system'
 
 local PixelArtCamera = require 'irene.entities.pixelart_camera'
 
@@ -13,6 +17,8 @@ local PixelArtCamera = require 'irene.entities.pixelart_camera'
 local player = require 'entities.player'
 local clients = require 'entities.clients'
 local flying_food = require 'entities.flying_food'
+local Camera = require 'entities.camera'
+local Wallpaper = require 'entities.wallpaper'
 
 -- systems manager
 local Systems = @record{
@@ -23,10 +29,15 @@ local Systems = @record{
   gravity_system: system(GravitySystem.run),
   velocity_system: system(VelocitySystem.run),
 
+  position_hierarchy_system: system(PositionHierarchySystem.run),
+  camera_system: system(CameraSystem.run),
+
+  sprite_painter_system: system(SpritePainterSystem.run),
+  sprite_animation_system: system(SpriteAnimationSystem.run),
+
   pixelart_camera_begin: system(PixelArtCamera.System.render_begin),
   pixelart_camera_draw_screens: system(PixelArtCamera.System.draw_screens),
   pixelart_camera_end: system(PixelArtCamera.System.render_end),
-
 }
 
 function Systems:run(sysname: string <comptime>, pre_run: boolean <comptime>, post_run: boolean <comptime>)
@@ -35,6 +46,8 @@ function Systems:run(sysname: string <comptime>, pre_run: boolean <comptime>, po
   ## end
 
   self.#|sysname.value|#:run(
+    &Camera.storage,
+    &Wallpaper.storage,
     &clients.storage,
     &player.storage,
     &flying_food.storage

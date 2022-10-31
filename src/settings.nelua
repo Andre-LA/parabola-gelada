@@ -9,4 +9,6 @@ local settings.scale <comptime> = #[DEV_SCALE or 5]#
 local settings.screen_size: Vec2i <const> = { 240, 135 }
 local settings.window_size: Vec2i <const> = settings.screen_size * settings.scale
 
+local settings.max_player_xpos = settings.screen_size.x - 32
+
 return settings

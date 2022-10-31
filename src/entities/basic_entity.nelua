@@ -1,6 +1,8 @@
 -- nene
 local Vec2 = require 'nene.math.vec2'
 local Rect = require 'nene.math.rect'
+local TextureAtlas = require 'nene.texture_atlas'
+local AnimationRange = require 'nene.animation'
 
 -- rotor
 local entity = require 'rotor.entity'
@@ -11,18 +13,24 @@ local rotor_concepts = require 'rotor.concepts'
 local EntityData = require 'irene.components.entity_data'
 local Position = require 'irene.components.position'
 local Collider = require 'irene.components.collider'
+local Painter = require 'irene.components.painter'
+local Sprite = require 'irene.components.sprite'
+
 local EntitiesRemoved = require 'irene.managers.entities_removed'
 
 -- game
 local EntityMask = require 'entities.mask'
+local Layer = require 'entities.layer'
 
 -- basic entity
 local BasicEntity: type <nickname 'BasicEntity'> = @entity(record{
   entity_data: EntityData,
   position: Position,
   collider: Collider,
+  painter: Painter,
+  sprite: Sprite,
 })
-local a_basic_entity_ptr = #[rotor_concepts.value.an_entity_ptr_with({EntityData.value, Position.value, Collider.value})]#
+local a_basic_entity_ptr = #[rotor_concepts.value.an_entity_ptr_with({EntityData.value, Position.value, Collider.value, Sprite.value})]#
 
 local BasicEntity.Inputs = @record{
   entity_data: record{
@@ -30,6 +38,10 @@ local BasicEntity.Inputs = @record{
   },
   position: record{
     local_pos: Vec2,
+  },
+  sprite: record{
+    spritesheet: TextureAtlas,
+    current_animation: AnimationRange,
   },
   collider: record{
     hitbox: Rect,
@@ -45,6 +57,17 @@ function BasicEntity.derived_init(basic_entity: a_basic_entity_ptr, inputs: Basi
 
   basic_entity.position = {
     local_pos = inputs.position.local_pos,
+  }
+
+  basic_entity.painter = {
+    active = true,
+    layer = Layer.Objects,
+  }
+
+  basic_entity.sprite = {
+    spritesheet = inputs.sprite.spritesheet,
+    current_animation = inputs.sprite.current_animation,
+    animation_running = true,
   }
 
   basic_entity.collider = {

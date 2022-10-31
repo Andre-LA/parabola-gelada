@@ -39,9 +39,11 @@ function clients.Entity.init(pos: Vec2): clients.Entity
     },
 
     collider = {
-      hitbox = {0, 0 , 128, 32},
+      hitbox = {0, 0 , 128, 48},
     }
   })
+
+  clients_entity.painter.active = false
 
   return clients_entity
 end

@@ -1,21 +1,25 @@
+-- game core
+local settings = require 'settings'
+
 -- nene
 local Nene = require 'nene'
+
+-- (init nene so all other top scope codes runs safely)
+local ok, nene <close> = Nene.init('Praia Games the game', settings.window_size.x, settings.window_size.y)
+assert(ok, "error: nene couldn't be initialized")
 
 -- irene
 local EntitiesRemoved = require 'irene.managers.entities_removed'
 
 -- game
-local settings = require 'settings'
 local messenger = require 'managers.messenger'
 local Scene = require 'managers.scene'
 
--- main
-local ok, nene <close> = Nene.init('Praia Games the game', settings.window_size.x, settings.window_size.y)
-assert(ok, "error: nene couldn't be initialized")
+-- init resources
+require 'res'
 
-defer
-  EntitiesRemoved.destroy()
-end
+-- main
+defer  EntitiesRemoved.destroy() end
 
 local scene = Scene.open()
 defer Scene.close() end

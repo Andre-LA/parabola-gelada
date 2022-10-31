@@ -1,0 +1,49 @@
+-- nene
+local Vec2 = require 'nene.math.vec2'
+local Rect = require 'nene.math.rect'
+local TextureAtlas = require 'nene.texture_atlas'
+local AnimationRange = require 'nene.animation'
+
+-- rotor
+local entity = require 'rotor.entity'
+local GenIdx = require 'rotor.gen_idx'
+local rotor_concepts = require 'rotor.concepts'
+local storage = require 'rotor.storage'
+
+-- irene
+local Position = require 'irene.components.position'
+local Painter = require 'irene.components.painter'
+local Sprite = require 'irene.components.sprite'
+
+-- game
+local Layer = require 'entities.layer'
+
+-- wallpaper entity
+local Wallpaper = @entity(record{
+  position: Position,
+  painter: Painter,
+  sprite: Sprite,
+})
+local Wallpaper.storage: storage(Wallpaper, 4)
+
+function Wallpaper.init(spritesheet: TextureAtlas, layer: Layer): Wallpaper
+  local wallpaper: Wallpaper = {
+    painter = {
+      active = true,
+      =layer
+    },
+
+    sprite = {
+      =spritesheet,
+    }
+  }
+
+  return wallpaper
+end
+
+function Wallpaper.spawn(spritesheet: TextureAtlas, layer: Layer): (boolean, GenIdx, *Wallpaper)
+  local ok, id, wallpaper = Wallpaper.storage:push(Wallpaper.init(spritesheet, layer))
+  return ok, id, wallpaper
+end
+
+return Wallpaper

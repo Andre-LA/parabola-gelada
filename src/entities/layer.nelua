@@ -1,0 +1,9 @@
+local Layer = @enum(byte){
+  None = 0,
+  ScenarioSky,
+  Scenario,
+  Objects,
+  Count,
+}
+
+return Layer
