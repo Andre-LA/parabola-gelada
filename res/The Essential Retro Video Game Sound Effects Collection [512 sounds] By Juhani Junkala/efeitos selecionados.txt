@@ -1,0 +1,6 @@
+sorvete batendo na bola - impact1
+entregando sorvete - coin double2
+player correndo - impact11
+sorvete sendo jogado - alarm loop7
+sorvete caindo na areia - impact7
+perdendo vida - damage2
