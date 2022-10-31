@@ -80,7 +80,7 @@ function flying_food.Entity.on_begin_intersection(collision: Collider.CollisionD
 end
 
 function flying_food.Entity.init(pos: Vec2): flying_food.Entity
-  local X_SPEED <comptime> = 32.0
+  local X_SPEED <comptime> = 42.0
 
   local flying_food_entity: flying_food.Entity;
 
@@ -118,6 +118,8 @@ function flying_food.Entity.init(pos: Vec2): flying_food.Entity
     direction = { 0, 1 },
     acceleration = 60,
   }
+
+  flying_food_entity.painter.active = false
 
   return flying_food_entity
 end

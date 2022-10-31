@@ -12,10 +12,14 @@ local EntitiesRemoved = require 'irene.managers.entities_removed'
 local settings = require 'settings'
 local Systems = require 'managers.systems'
 
+local Resources = require 'res'
+local Layer = require 'entities.layer'
+
 local camera = require 'entities.camera'
 local clients = require 'entities.clients'
 local player = require 'entities.player'
 local flying_food = require 'entities.flying_food'
+local Wallpaper = require 'entities.wallpaper'
 
 -- scene manager
 local Scene = @record{
@@ -31,6 +35,7 @@ local Scene = @record{
 local systems: Systems
 
 function Scene:set_game_over()
+  self.current_spawner = #self.flying_food_spawners + 1
   print'game over'
 end
 
@@ -78,8 +83,6 @@ function Scene:on_flying_food_catch()
     self.active_ice_creams = self.active_ice_creams - 1
   end
 
-  print('->', self.active_ice_creams )
-
   if self.active_ice_creams == 0 then
     self:start_next_wave()
   end
@@ -99,15 +102,23 @@ function Scene.open(): Scene
     scene.camera_id = id
   end
 
+  do -- spawn backgrounds
+    local ok, id, wallpaper = Wallpaper.spawn(Resources.res.scenario_bg_sky, Layer.ScenarioSky)
+    assert(ok, "Wallpaper couldn't be spawned")
+
+    local ok, id, wallpaper = Wallpaper.spawn(Resources.res.scenario_bg, Layer.Scenario)
+    assert(ok, "Wallpaper couldn't be spawned")
+  end
+
   do -- spawn player
-    local ok, id, player_entity = player.Entity.spawn({32, settings.screen_size.y - 15})
+    local ok, id, player_entity = player.Entity.spawn({64, settings.screen_size.y - 34})
     assert(ok, "Player couldn't be spawned")
 
     scene.player_id = id
   end
 
   do -- spawn clients
-    local ok, id, clients_entity = clients.Entity.spawn({settings.screen_size.x - 32, settings.screen_size.y - 32})
+    local ok, id, clients_entity = clients.Entity.spawn({settings.max_player_xpos + 80, settings.screen_size.y - 48})
     assert(ok, "Clients couldn't be spawned")
 
     scene.clients_id = id
@@ -117,6 +128,7 @@ function Scene.open(): Scene
     local start_pos: Vec2 = { 0, 40 }
 
     scene.flying_food_spawners = {
+      -- 0
       {
         pos = start_pos,
         start_time = nene.current_time,
@@ -124,6 +136,7 @@ function Scene.open(): Scene
         count = 1,
       },
 
+      -- 1
       {
         pos = start_pos,
         start_time = nene.current_time,
@@ -131,53 +144,66 @@ function Scene.open(): Scene
         count = 2,
       },
 
+      -- 2
       {
         pos = start_pos,
         interval = 500,
         count = 4,
       },
 
+      -- 3
       {
         pos = start_pos,
         interval = 2700,
         count = 3,
       },
 
+      -- 4
       {
         pos = start_pos,
         interval = 700,
+        count = 5,
+      },
+
+      -- 5
+      {
+        pos = start_pos,
+        interval = 1000,
         count = 6,
       },
 
+      -- 6
       {
         pos = start_pos,
-        interval = 800,
-        count = 8,
-      },
-
-      {
-        pos = start_pos,
-        interval = 1100,
+        interval = 920,
         count = 7,
       },
     }
   end
 
-  scene:start_next_wave()
-  scene:start_next_wave()
-  scene:start_next_wave()
-
   return scene
 end
 
 function Scene:update()
+  local ok, pixel_camera = camera.storage:mget(self.camera_id)
+  assert(ok, "pixel art camera couldn't be found")
+
+  local ok, player_entity = player.storage:mget(self.player_id)
+  assert(ok, "player couldn't be found")
+
+  pixel_camera:set_pos_by_player_pos(player_entity.position:final_pos().x)
+
   self:get_current_spawner():update()
 
   systems:run('movement_system', false, false)
   systems:run('flying_food_system', false, false)
 
+  systems:run('sprite_animation_system', false, false)
+
   systems:run('gravity_system', false, false)
   systems:run('velocity_system', false, false)
+
+  systems:run('position_hierarchy_system', false, false)
 
   systems:run('collision_system', true, true)
 end
@@ -187,6 +213,12 @@ function Scene:draw()
   assert(ok, "pixel art camera couldn't be found")
 
   systems:run_entity(pixel_camera, 'pixelart_camera_begin', false, false)
+  systems:run('camera_system', false, false)
+
+  for i = Layer.None + 1, < Layer.Count do
+    systems.sprite_painter_system.data.active_layer = i
+    systems:run('sprite_painter_system', false, false)
+  end
 
   systems.collision_system.data:draw_hitboxes()
 

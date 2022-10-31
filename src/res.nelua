@@ -1,0 +1,64 @@
+-- nene
+local Grid = require 'nene.math.grid'
+local Texture = require 'nene.texture'
+local TextureAtlas = require 'nene.texture_atlas'
+
+-- resources
+local Resources = @record{
+  loaded: boolean,
+
+  player: TextureAtlas,
+  scenario_bg: TextureAtlas,
+  scenario_bg_sky: TextureAtlas,
+}
+
+local Resources.res: Resources
+
+##[[
+local function respath(filename)
+  local filepath = 'res/'..filename
+
+  -- test if file exists
+  local file = io.open(filepath)
+  static_assert(file, "file '" .. filepath .. "' doesn't exists")
+  file:close()
+
+  return filepath
+end
+]]
+
+local function load_tex(filepath: string): Texture
+  local ok, tex = Texture.load(filepath)
+  assert(ok, "Couldn't load texture")
+  return tex
+end
+
+local function load_single_atlas(filepath: string): TextureAtlas
+  local texture: Texture = load_tex(filepath)
+
+  local atlas: TextureAtlas = {
+    =texture,
+    width = 1,
+    grid = { cell_size = { texture.width, texture.height } }
+  }
+
+  return atlas
+end
+
+local function load_atlas(filepath: string, width: uint16, grid: Grid): TextureAtlas
+  local ok, atlas = TextureAtlas.load(filepath, width, grid)
+  assert(ok, "Couldn't load texture atlas")
+  return atlas
+end
+
+function Resources:load()
+  check(not self.loaded, "Cannot load already loaded resources")
+
+  self.player          = load_atlas(#[respath'PersonagemPrincipal.png']#, 2, { cell_size = { 17, 26 } })
+  self.scenario_bg     = load_single_atlas(#[respath'scenario_bg.png']#)
+  self.scenario_bg_sky = load_single_atlas(#[respath'scenario_bg_sky.png']#)
+end
+
+Resources.res:load()
+
+return Resources

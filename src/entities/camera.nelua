@@ -2,28 +2,51 @@
 local Vec2 = require 'nene.math.vec2'
 
 -- rotor
+local entity = require 'rotor.entity'
 local storage = require 'rotor.storage'
 local GenIdx = require 'rotor.gen_idx'
 
 -- irene
+local Position = require 'irene.components.position'
 local PixelArtCamera = require 'irene.entities.pixelart_camera'
 
 -- game
 local settings = require 'settings'
 
 -- camera entity
-local camera = @record{}
-local camera.storage: storage(PixelArtCamera, 1)
+local center_pos: Vec2 = { settings.screen_size.x / 2 , settings.screen_size.y / 2 }
 
-function camera.spawn(pos: Vec2): (boolean, GenIdx, *PixelArtCamera)
-  local ok, id, pixel_camera = PixelArtCamera.spawn(
-    &camera.storage,
-    pos,
-    {},
-    settings.scale
-  )
+local Camera <nickname 'Camera'> = @entity(record{
+  position: Position,
+  pixel_camera: PixelArtCamera,
+})
+local Camera.storage: storage(Camera, 1)
 
-  return ok, id, pixel_camera
+function Camera.init(): Camera
+  local camera: Camera = {
+    position = {
+      local_pos = center_pos,
+    },
+
+    pixel_camera = PixelArtCamera.init({}, {}, settings.scale)
+  }
+  return camera
 end
 
-return camera
+function Camera.spawn(): (boolean, GenIdx, *Camera)
+  local ok, id, camera = Camera.storage:push(Camera.init())
+  assert(ok, "camera couldn't be spawned")
+  return ok, id, camera
+end
+
+function Camera:set_pos_by_player_pos(player_xpos: number)
+  local min_pos, max_pos = center_pos + Vec2{-60}, center_pos + Vec2{60}
+  local t = (player_xpos / settings.max_player_xpos) * 1.2
+
+  local campos = Vec2.lerp(min_pos, max_pos, t)
+  campos.x = math.clamp(campos.x, 120, 240)
+
+  self.position.local_pos = campos
+end
+
+return Camera

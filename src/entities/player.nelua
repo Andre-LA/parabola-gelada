@@ -1,6 +1,7 @@
 -- nene
 local Nene = require 'nene'
 local Vec2 = require 'nene.math.vec2'
+local AnimationRange = require 'nene.animation'
 
 -- rotor
 local entity = require 'rotor.entity'
@@ -13,11 +14,13 @@ local GenIdx = require 'rotor.gen_idx'
 local EntityData = require 'irene.components.entity_data'
 local Position = require 'irene.components.position'
 local Collider = require 'irene.components.collider'
+local Sprite = require 'irene.components.sprite'
 local Velocity = require 'irene.components.velocity'
 
 -- game
 local EntityMask = require 'entities.mask'
 local MovableEntity = require 'entities.movable_entity'
+local Resources = require 'res'
 
 -- player namespace
 local player = @record{}
@@ -34,6 +37,14 @@ local player.Entity <nickname 'player.Entity'> = @derived_entity(MovableEntity, 
 
 local player.storage: storage(player.Entity, 1)
 
+local idle_animation: AnimationRange = { fps = (1000 / 300), from = 0, to = 1, loop = true, }
+local run_animation : AnimationRange = { fps = (1000 / 100), from = 2, to = 3, loop = true, }
+
+function player.Entity:flip()
+  self.sprite.flip_h = not self.sprite.flip_h
+  self.collider.hitbox.x = -self.collider.hitbox.x
+end
+
 function player.Entity.init(pos: Vec2): player.Entity
   local player: player.Entity;
 
@@ -48,14 +59,21 @@ function player.Entity.init(pos: Vec2): player.Entity
       },
 
       collider = {
-        hitbox = { 0, 0 , 15, 15 },
+        hitbox = { 15, 0 , 15, 15 },
+      },
+
+      sprite = {
+        spritesheet = Resources.res.player,
+        current_animation = idle_animation,
       },
     }
   })
 
   player.player_comp = {
-    mov_speed = 15*8,
+    mov_speed = 16*9,
   }
+
+  player.sprite.offset = { 0, -11 }
 
   return player
 end
@@ -71,14 +89,18 @@ local player.MovementSystem = @record{}
 
 local player.MovementSystem.Filter = @record{
   player_comp: *player.Component,
+  sprite: *Sprite,
   velocity: *Velocity,
 }
 
-function player.MovementSystem:run(c: player.MovementSystem.Filter)
+function player.MovementSystem:run(c: player.MovementSystem.Filter, player_entity: *player.Entity)
   local nene = Nene.instance()
 
   local is_left_held = nene:get_scancode(Nene.Scancode.Left)
   local is_right_held = nene:get_scancode(Nene.Scancode.Right)
+  local is_flip_pressed = nene:get_scancode_down(Nene.Scancode.Space)
+
+  local is_on_movement = is_left_held or is_right_held
 
   if is_left_held then
     c.velocity.final_velocity = { x = -c.player_comp.mov_speed }
@@ -87,6 +109,12 @@ function player.MovementSystem:run(c: player.MovementSystem.Filter)
   else
     c.velocity.final_velocity = { x = 0 }
   end
+
+  if is_flip_pressed then
+    player_entity:flip()
+  end
+
+  c.sprite:set_animation(is_on_movement and run_animation or idle_animation, nene.current_time)
 end
 
 return player
