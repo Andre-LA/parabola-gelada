@@ -23,6 +23,12 @@ local IceMan = require 'entities.iceman'
 local Wallpaper = require 'entities.wallpaper'
 
 -- scene manager
+local SceneState = @enum{
+  Running = 0,
+  Win,
+  Lose
+}
+
 local Scene = @record{
   camera_id: GenIdx,
   player_id: GenIdx,
@@ -33,17 +39,19 @@ local Scene = @record{
   current_spawner: usize,
   active_ice_creams: byte,
   remaining_chances: byte,
+
+  state: SceneState,
 }
 
 local systems: Systems
 
 function Scene:set_game_over()
   self.current_spawner = #self.flying_food_spawners + 1
-  print'game over'
+  self.state = SceneState.Lose
 end
 
 function Scene:set_game_win()
-  print'game win'
+  self.state = SceneState.Win
 end
 
 function Scene:there_is_remaining_spawners(): boolean
@@ -64,7 +72,6 @@ function Scene:start_next_wave()
   if self:there_is_remaining_spawners() then
     self.current_spawner = self.current_spawner + 1
     self:get_current_spawner().start_time = nene.current_time
-    print('next wave starting: ', self.current_spawner)
   else
     self:set_game_win()
   end
@@ -201,11 +208,14 @@ function Scene.open(): Scene
     }
   end
 
-
   return scene
 end
 
 function Scene:update()
+  if self.state ~= SceneState.Running then
+    return
+  end
+
   local ok, pixel_camera = camera.storage:mget(self.camera_id)
   assert(ok, "pixel art camera couldn't be found")
 
@@ -253,18 +263,36 @@ function Scene:draw()
     systems:run('sprite_painter_system', false, false)
   end
 
-  systems.collision_system.data:draw_hitboxes()
+  -- systems.collision_system.data:draw_hitboxes()
 
   systems:run_entity(pixel_camera, 'pixelart_camera_end', false, false)
   systems:run_entity(pixel_camera, 'pixelart_camera_draw_screens', false, false)
+
+  switch self.state do
+  case SceneState.Lose then
+    Resources.res.overlay_final:draw()
+    Resources.res.lose_final:draw()
+
+  case SceneState.Win then
+    Resources.res.overlay_final:draw()
+    Resources.res.win_final:draw()
+  end
 end
 
 function Scene:close()
+  camera.storage:clear()
+  clients.storage:clear()
   player.storage:clear()
   flying_food.storage:clear()
-  clients.storage:clear()
+  IceMan.storage:clear()
+  Wallpaper.storage:clear()
 
   EntitiesRemoved.clear()
+end
+
+function Scene:reset(): Scene
+  self:close()
+  return Scene.open()
 end
 
 return Scene

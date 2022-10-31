@@ -3,12 +3,18 @@ local Grid = require 'nene.math.grid'
 local Texture = require 'nene.texture'
 local TextureAtlas = require 'nene.texture_atlas'
 
+local Music = require 'nene.audio.music'
+local Sound = require 'nene.audio.sound'
+
 -- resources
 local Resources = @record{
   loaded: boolean,
 
   player: TextureAtlas,
   ball: TextureAtlas,
+
+  clients_bg: TextureAtlas,
+  clients_fg: TextureAtlas,
 
   kid1: TextureAtlas,
   kid2: TextureAtlas,
@@ -26,6 +32,19 @@ local Resources = @record{
   flying_food: TextureAtlas,
   vfx_sand: TextureAtlas,
   fallen_flying_food: TextureAtlas,
+
+  overlay_final: Texture,
+  lose_final: Texture,
+  win_final: Texture,
+
+  music: Music,
+
+  sfx_alarm_loop7: Sound,
+  sfx_coin_double2: Sound,
+  sfx_sounds_damage2: Sound,
+  sfx_sounds_impact1: Sound,
+  sfx_sounds_impact11: Sound,
+  sfx_sounds_impact7: Sound,
 }
 
 local Resources.res: Resources
@@ -67,6 +86,18 @@ local function load_atlas(filepath: string, width: uint16, grid: Grid): TextureA
   return atlas
 end
 
+local function load_mus(filepath: string): Music
+  local ok, music = Music.load(filepath)
+  assert(ok, "Couldn't load music")
+  return music
+end
+
+local function load_sound(filepath: string): Sound
+  local ok, sound = Sound.load(filepath)
+  assert(ok, "Couldn't load sound")
+  return sound
+end
+
 function Resources:load()
   check(not self.loaded, "Cannot load already loaded resources")
 
@@ -75,6 +106,8 @@ function Resources:load()
   self.iceman = load_atlas(#[respath'sorveteiro.png']#, 5, { cell_size = { 19, 39 } })
   self.icecar = load_single_atlas(#[respath'carrinho.png']#)
 
+  self.clients_bg = load_single_atlas(#[respath'guardasol_e_cadeira.png']#)
+  self.clients_fg = load_single_atlas(#[respath'cadeiravermelha.png']#)
 
   self.kid1 = load_atlas(#[respath'crianca01.png']#, 2, { cell_size = { 15, 25 } })
   self.kid2 = load_atlas(#[respath'crianca02.png']#, 2, { cell_size = { 15, 25 } })
@@ -84,12 +117,63 @@ function Resources:load()
 
   self.flying_food        = load_atlas(#[respath'sorvetes.png']#, 4, { cell_size = { 9, 21 } })
   self.vfx_sand           = load_atlas(#[respath'vfx_areia.png']#, 7, { cell_size = { 35, 12 } })
-  self.fallen_flying_food = load_atlas(#[respath'sorvete_caido.png']#, 4, { cell_size = { 25, 18 } })
-
+  self.fallen_flying_food = load_atlas(#[respath'sorvete_caido.png']#, 4, { cell_size = { 27, 20 } })
 
   self.scenario_bg        = load_single_atlas(#[respath'scenario_bg.png']#)
   self.scenario_bg_clouds = load_single_atlas(#[respath'scenario_bg_clouds.png']#)
   self.scenario_bg_sky    = load_single_atlas(#[respath'scenario_bg_sky.png']#)
+
+  self.overlay_final = load_tex(#[respath'overlay_final.png']#)
+  self.lose_final    = load_tex(#[respath'lose_final.png']#)
+  self.win_final     = load_tex(#[respath'win_final.png']#)
+
+  self.music     = load_mus(#[respath'Shake_and_Bake.mp3']#)
+
+  self.sfx_alarm_loop7 = load_sound(#[respath'audio/sfx_alarm_loop7.wav']#)
+  self.sfx_coin_double2 = load_sound(#[respath'audio/sfx_coin_double2.wav']#)
+  self.sfx_sounds_damage2 = load_sound(#[respath'audio/sfx_sounds_damage2.wav']#)
+  self.sfx_sounds_impact1 = load_sound(#[respath'audio/sfx_sounds_impact1.wav']#)
+  self.sfx_sounds_impact11 = load_sound(#[respath'audio/sfx_sounds_impact11.wav']#)
+  self.sfx_sounds_impact7 = load_sound(#[respath'audio/sfx_sounds_impact7.wav']#)
+end
+
+function Resources:unload()
+  check(not self.loaded, "Cannot unload already unloaded resources")
+
+  self.player:destroy()
+  self.ball:destroy()
+  self.iceman:destroy()
+  self.icecar:destroy()
+
+  self.clients_bg:destroy()
+  self.clients_fg:destroy()
+
+  self.kid1:destroy()
+  self.kid2:destroy()
+  self.kid3:destroy()
+  self.kid4:destroy()
+  self.kid5:destroy()
+
+  self.flying_food:destroy()
+  self.vfx_sand:destroy()
+  self.fallen_flying_food:destroy()
+
+
+  self.scenario_bg:destroy()
+  self.scenario_bg_clouds:destroy()
+  self.scenario_bg_sky:destroy()
+
+  self.overlay_final:destroy()
+  self.lose_final:destroy()
+  self.win_final:destroy()
+
+  self.music:destroy()
+  self.sfx_alarm_loop7:destroy()
+  self.sfx_coin_double2:destroy()
+  self.sfx_sounds_damage2:destroy()
+  self.sfx_sounds_impact1:destroy()
+  self.sfx_sounds_impact11:destroy()
+  self.sfx_sounds_impact7:destroy()
 end
 
 Resources.res:load()

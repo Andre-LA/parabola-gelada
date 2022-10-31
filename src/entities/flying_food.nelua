@@ -59,6 +59,8 @@ local flying_food.Entity <nickname 'flying_food.Entity'> = @derived_entity(Movab
 local flying_food.storage: storage(flying_food.Entity, 16)
 
 function flying_food.Entity:fell_on_ground()
+  Resources.res.sfx_sounds_impact7:play()
+
   self.flying_food_comp.is_flying = false
 
   self.position.local_pos.x = self.position.local_pos.x + math.random(-2, 2)
@@ -105,6 +107,7 @@ function flying_food.Entity.on_begin_intersection(collision: Collider.CollisionD
 
   case EntityMask.Clients then
     messenger.call'flying_food_catch'
+    Resources.res.sfx_coin_double2:play()
     flying_food.Entity.destroy(collision.self.entity_data.id)
   end
 end
@@ -243,6 +246,8 @@ function flying_food.Spawner:update()
 
     local ok = flying_food.Entity.spawn(self.pos)
     check(ok, "flying food entity couldn't be spawned")
+
+    Resources.res.sfx_alarm_loop7:play()
   end
 end
 

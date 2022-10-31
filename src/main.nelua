@@ -1,11 +1,33 @@
+##[=[
+context.rootpragmas.nogc = true
+
+if ccinfo.is_emscripten then
+  primtypes.uinteger = primtypes.uint32
+  primtypes.integer = primtypes.int32
+  primtypes.number = primtypes.float32
+
+  -- this preloads the resources, this way we can load the img_shapes.png
+  cflags '--preload-file res'
+  -- enable png format for SDL2_image
+  cflags [[-sSDL2_IMAGE_FORMATS='["png"]']]
+  -- enable wav and mp3 format for SDL2_mixer
+  cflags [[-sSDL2_MIXER_FORMATS='["ogg","mp3","wav"]']]
+  -- allow memory growth
+  cflags '-s ALLOW_MEMORY_GROWTH=1'
+  -- use minimal shell
+  cflags '--shell-file devres/shell_minimal.html'
+end
+]=]
+
 -- game core
 local settings = require 'settings'
 
 -- nene
 local Nene = require 'nene'
+local Music = require 'nene.audio.music'
 
 -- (init nene so all other top scope codes runs safely)
-local ok, nene <close> = Nene.init('Praia Games the game', settings.window_size.x, settings.window_size.y)
+local ok, nene <close> = Nene.init('Parábola Gelada!', settings.window_size.x, settings.window_size.y)
 assert(ok, "error: nene couldn't be initialized")
 
 -- irene
@@ -16,27 +38,45 @@ local messenger = require 'managers.messenger'
 local Scene = require 'managers.scene'
 
 -- init resources
-require 'res'
+local Resources = require 'res'
 
 -- main
-defer  EntitiesRemoved.destroy() end
+defer
+  Music.stop()
+  EntitiesRemoved.destroy()
+  Resources.res:unload()
+end
 
 local scene = Scene.open()
 defer Scene.close() end
+
+Resources.res.music:play()
 
 messenger.set('flying_food_launched', function() scene:on_flying_food_launched() end)
 messenger.set('flying_food_fallen'  , function() scene:on_flying_food_fallen()   end)
 messenger.set('flying_food_catch'   , function() scene:on_flying_food_catch()    end)
 
 -- init Scene
-repeat
+local function frame()
   nene:poll_events()
 
   scene:update()
+
+  if nene:get_scancode_down(Nene.Scancode.R) then
+    scene = scene:reset()
+  end
 
   nene:render_clear()
 
   scene:draw()
 
   nene:render_present()
-until nene.quit
+end
+
+## if ccinfo.is_emscripten then
+  emscripten_set_main_loop(frame, 0, 1)
+## else
+  repeat
+    frame()
+  until nene.quit
+## end

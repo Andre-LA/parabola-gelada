@@ -1,0 +1,100 @@
+-- nene
+local Nene = require 'nene'
+local Vec2 = require 'nene.math.vec2'
+local AnimationRange = require 'nene.animation'
+
+-- rotor
+local entity = require 'rotor.entity'
+local storage = require 'rotor.storage'
+local GenIdx = require 'rotor.gen_idx'
+
+-- irene
+local Position = require 'irene.components.position'
+local Painter = require 'irene.components.painter'
+local Sprite = require 'irene.components.sprite'
+
+-- game
+local Resources = require 'res'
+
+local EntityMask = require 'entities.mask'
+local Layer = require 'entities.layer'
+
+-- ice man entity
+local idle_animation     : AnimationRange = { from = 0, to = 1, fps = 8, loop = true }
+local launching_animation: AnimationRange = { from = 5, to = 9, fps = 8, loop = true }
+
+local IceCar <nickname 'IceCar'> = @entity(record{
+  position: Position,
+  painter: Painter,
+  sprite: Sprite,
+})
+
+local IceMan <nickname 'IceMan'> = @entity(record{
+  position: Position,
+  painter: Painter,
+  sprite: Sprite,
+  car: IceCar
+})
+local IceMan.storage: storage(IceMan, 1)
+
+function IceMan.init()
+  local iceman: IceMan = {
+    position = {
+      local_pos = { 44, 70 }
+    },
+
+    painter = {
+      active = true,
+      layer = Layer.BgObjects,
+    },
+
+    sprite = {
+      spritesheet = Resources.res.iceman,
+      current_animation = idle_animation,
+      animation_running = true,
+    },
+
+    car = {
+      position = {
+        local_pos = { -43, -26 }
+      },
+
+      painter = {
+        active = true,
+        layer = Layer.BgBgObjects,
+      },
+
+      sprite = {
+        spritesheet = Resources.res.icecar,
+      },
+    }
+  }
+
+  return iceman
+end
+
+function IceMan.spawn(): (boolean, GenIdx, *IceMan)
+  local ok, id, iceman = IceMan.storage:push(IceMan.init())
+  return ok, id, iceman
+end
+
+-- Ice man system: just controls the animation
+local IceMan.System = @record{
+  is_launching: boolean,
+}
+
+local IceMan.System.Filter = @record{ sprite: *Sprite }
+
+function IceMan.System:run(c: IceMan.System.Filter, iceman: overload(*IceMan, *IceCar))
+  ## if iceman.type.subtype == IceMan.value then
+    local anim = self.is_launching and launching_animation or idle_animation
+
+    if anim ~= c.sprite.current_animation then
+      local nene = Nene.instance()
+      c.sprite:set_animation(anim, nene.current_time)
+    end
+  ## end
+end
+
+return IceMan
+

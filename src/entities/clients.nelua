@@ -28,6 +28,31 @@ local BasicEntity = require 'entities.basic_entity'
 -- clients
 local clients = @record{}
 
+local BgFgObjects <nickname 'BgFgObjects'> = @entity(record{
+  position: Position,
+  painter: Painter,
+  sprite: Sprite,
+})
+
+function BgFgObjects.init(layer: Layer, spritesheet: TextureAtlas): BgFgObjects
+  local bgfgobjs: BgFgObjects = {
+    position = {
+      local_pos = { 6, -32 }
+    },
+
+    painter = {
+      active = true,
+      =layer,
+    },
+
+    sprite = {
+      =spritesheet,
+    },
+  }
+
+  return bgfgobjs
+end
+
 local KidClient <nickname 'KidClient'> = @entity(record{
   position: Position,
   painter: Painter,
@@ -42,7 +67,7 @@ function KidClient.init(pos: Vec2, spritesheet: TextureAtlas): KidClient
 
     painter = {
       active = true,
-      layer = Layer.BgObjects,
+      layer = Layer.Objects,
     },
 
     sprite = {
@@ -62,6 +87,9 @@ local clients.Entity <nickname 'clients.Entity'> = @derived_entity(BasicEntity, 
   kid3: KidClient,
   kid4: KidClient,
   kid5: KidClient,
+
+  bg_objects: BgFgObjects,
+  fg_objects: BgFgObjects,
 })
 local clients.storage: storage(clients.Entity, 1)
 
@@ -87,6 +115,9 @@ function clients.Entity.init(pos: Vec2): clients.Entity
   clients_entity.painter.active = false
 
   local gap <comptime> = 12
+
+  clients_entity.bg_objects = BgFgObjects.init(Layer.BgBgObjects, Resources.res.clients_bg)
+  clients_entity.fg_objects = BgFgObjects.init(Layer.FgObjects, Resources.res.clients_fg)
 
   clients_entity.kid1 = KidClient.init({ gap*0 + math.random(-2, 2) , math.random(3, 9) }, Resources.res.kid1)
   clients_entity.kid2 = KidClient.init({ gap*1 + math.random(-2, 2) , math.random(3, 9) }, Resources.res.kid2)

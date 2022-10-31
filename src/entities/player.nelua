@@ -124,6 +124,7 @@ end
 function player.Entity:hit_ball()
   self.ball.sprite.animation_running = true
   self.ball.sprite.current_frame = 1
+  Resources.res.sfx_sounds_impact1:play()
 end
 
 function player.Entity:is_beyond_limits(): boolean
