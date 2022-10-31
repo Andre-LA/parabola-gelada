@@ -1,6 +1,7 @@
 -- nene
 local Nene = require 'nene'
 local Vec2 = require 'nene.math.vec2'
+local TextureAtlas = require 'nene.texture_atlas'
 
 -- rotor
 local entity = require 'rotor.entity'
@@ -12,22 +13,62 @@ local GenIdx = require 'rotor.gen_idx'
 -- irene
 local EntityData = require 'irene.components.entity_data'
 local Position = require 'irene.components.position'
+local Painter = require 'irene.components.painter'
+local Sprite = require 'irene.components.sprite'
+
 local Collider = require 'irene.components.collider'
 local Velocity = require 'irene.components.velocity'
 
 -- game
+local Resources = require 'res'
 local EntityMask = require 'entities.mask'
+local Layer = require 'entities.layer'
 local BasicEntity = require 'entities.basic_entity'
 
 -- clients
 local clients = @record{}
 
+local KidClient <nickname 'KidClient'> = @entity(record{
+  position: Position,
+  painter: Painter,
+  sprite: Sprite,
+})
+
+function KidClient.init(pos: Vec2, spritesheet: TextureAtlas): KidClient
+  local kid: KidClient = {
+    position = {
+      local_pos = pos
+    },
+
+    painter = {
+      active = true,
+      layer = Layer.BgObjects,
+    },
+
+    sprite = {
+      =spritesheet,
+      current_animation = { to = 1, fps = 10, loop = true },
+      animation_running = true,
+    },
+  }
+
+  return kid
+end
+
 -- clients entity
-local clients.Entity <nickname 'clients.Entity'> = @derived_entity(BasicEntity, record{})
+local clients.Entity <nickname 'clients.Entity'> = @derived_entity(BasicEntity, record{
+  kid1: KidClient,
+  kid2: KidClient,
+  kid3: KidClient,
+  kid4: KidClient,
+  kid5: KidClient,
+})
 local clients.storage: storage(clients.Entity, 1)
 
 function clients.Entity.init(pos: Vec2): clients.Entity
   local clients_entity: clients.Entity
+
+  local hitbox_y <comptime> = 10
 
   BasicEntity.derived_init(&clients_entity, {
     entity_data = {
@@ -39,11 +80,20 @@ function clients.Entity.init(pos: Vec2): clients.Entity
     },
 
     collider = {
-      hitbox = {0, 0 , 128, 48},
-    }
+      hitbox = {0, hitbox_y, 128, 48 - hitbox_y},
+    },
   })
 
   clients_entity.painter.active = false
+
+  local gap <comptime> = 12
+
+  clients_entity.kid1 = KidClient.init({ gap*0 + math.random(-2, 2) , math.random(3, 9) }, Resources.res.kid1)
+  clients_entity.kid2 = KidClient.init({ gap*1 + math.random(-2, 2) , math.random(3, 9) }, Resources.res.kid2)
+  clients_entity.kid3 = KidClient.init({ gap*2 + math.random(-2, 2) , math.random(3, 9) }, Resources.res.kid3)
+  clients_entity.kid4 = KidClient.init({ gap*3 + math.random(-2, 2) , math.random(3, 9) }, Resources.res.kid4)
+  clients_entity.kid5 = KidClient.init({ gap*4 + math.random(-2, 2) , math.random(3, 9) }, Resources.res.kid5)
+
 
   return clients_entity
 end

@@ -19,6 +19,7 @@ local camera = require 'entities.camera'
 local clients = require 'entities.clients'
 local player = require 'entities.player'
 local flying_food = require 'entities.flying_food'
+local IceMan = require 'entities.iceman'
 local Wallpaper = require 'entities.wallpaper'
 
 -- scene manager
@@ -26,6 +27,8 @@ local Scene = @record{
   camera_id: GenIdx,
   player_id: GenIdx,
   clients_id: GenIdx,
+  iceman_id: GenIdx,
+
   flying_food_spawners: [7]flying_food.Spawner,
   current_spawner: usize,
   active_ice_creams: byte,
@@ -43,6 +46,14 @@ function Scene:set_game_win()
   print'game win'
 end
 
+function Scene:there_is_remaining_spawners(): boolean
+  return self.current_spawner < #self.flying_food_spawners - 1
+end
+
+function Scene:can_get_spawner(): boolean
+  return self.current_spawner < #self.flying_food_spawners
+end
+
 function Scene:get_current_spawner(): *flying_food.Spawner
   return &self.flying_food_spawners[self.current_spawner]
 end
@@ -50,9 +61,7 @@ end
 function Scene:start_next_wave()
   local nene = Nene.instance()
 
-  local there_is_remaining_spawners = self.current_spawner < #self.flying_food_spawners - 1
-
-  if there_is_remaining_spawners then
+  if self:there_is_remaining_spawners() then
     self.current_spawner = self.current_spawner + 1
     self:get_current_spawner().start_time = nene.current_time
     print('next wave starting: ', self.current_spawner)
@@ -69,12 +78,13 @@ function Scene:on_flying_food_fallen()
   self.active_ice_creams = self.active_ice_creams - 1
   self.remaining_chances = self.remaining_chances - 1
 
+  if self.remaining_chances == 0 then
+    self:set_game_over()
+    return
+  end
+
   if self.active_ice_creams == 0 then
-    if self.remaining_chances == 0 then
-      self:set_game_over()
-    else
-      self:start_next_wave()
-    end
+    self:start_next_wave()
   end
 end
 
@@ -106,8 +116,18 @@ function Scene.open(): Scene
     local ok, id, wallpaper = Wallpaper.spawn(Resources.res.scenario_bg_sky, Layer.ScenarioSky)
     assert(ok, "Wallpaper couldn't be spawned")
 
+    local ok, id, wallpaper = Wallpaper.spawn(Resources.res.scenario_bg_clouds, Layer.ScenarioClouds)
+    assert(ok, "Wallpaper couldn't be spawned")
+
     local ok, id, wallpaper = Wallpaper.spawn(Resources.res.scenario_bg, Layer.Scenario)
     assert(ok, "Wallpaper couldn't be spawned")
+  end
+
+  do -- spawn ice car
+    local ok, id, iceman = IceMan.spawn()
+    assert(ok, "Ice man couldn't be spawned")
+
+    scene.iceman_id = id
   end
 
   do -- spawn player
@@ -125,7 +145,7 @@ function Scene.open(): Scene
   end
 
   do -- set spawners
-    local start_pos: Vec2 = { 0, 40 }
+    local start_pos: Vec2 = { 34, 64 }
 
     scene.flying_food_spawners = {
       -- 0
@@ -168,7 +188,7 @@ function Scene.open(): Scene
       -- 5
       {
         pos = start_pos,
-        interval = 1000,
+        interval = 900,
         count = 6,
       },
 
@@ -181,6 +201,7 @@ function Scene.open(): Scene
     }
   end
 
+
   return scene
 end
 
@@ -191,12 +212,24 @@ function Scene:update()
   local ok, player_entity = player.storage:mget(self.player_id)
   assert(ok, "player couldn't be found")
 
+  local ok, iceman = IceMan.storage:mget(self.iceman_id)
+  assert(ok, "ice man couldn't be found")
+
   pixel_camera:set_pos_by_player_pos(player_entity.position:final_pos().x)
 
-  self:get_current_spawner():update()
+  if self:can_get_spawner() then
+    self:get_current_spawner():update()
+  end
 
   systems:run('movement_system', false, false)
   systems:run('flying_food_system', false, false)
+
+  if self:can_get_spawner() then
+    systems.iceman_system.data.is_launching = self:get_current_spawner().count > 0
+  else
+    systems.iceman_system.data.is_launching = false
+  end
+  systems:run_entity(iceman, 'iceman_system', false, false)
 
   systems:run('sprite_animation_system', false, false)
 

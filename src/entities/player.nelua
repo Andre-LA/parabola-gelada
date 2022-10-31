@@ -15,15 +15,24 @@ local EntityData = require 'irene.components.entity_data'
 local Position = require 'irene.components.position'
 local Collider = require 'irene.components.collider'
 local Sprite = require 'irene.components.sprite'
+local Painter = require 'irene.components.painter'
 local Velocity = require 'irene.components.velocity'
 
 -- game
 local EntityMask = require 'entities.mask'
+local Layer = require 'entities.layer'
 local MovableEntity = require 'entities.movable_entity'
 local Resources = require 'res'
 
 -- player namespace
 local player = @record{}
+
+-- ball sub-entity
+local Ball <nickname 'Ball'> = @entity(record{
+  position: Position,
+  painter: Painter,
+  sprite: Sprite,
+})
 
 -- player component
 local player.Component <nickname 'player.Component'> = @component(record{
@@ -33,6 +42,7 @@ local player.Component <nickname 'player.Component'> = @component(record{
 -- player entity
 local player.Entity <nickname 'player.Entity'> = @derived_entity(MovableEntity, record{
   player_comp: player.Component,
+  ball: Ball,
 })
 
 local player.storage: storage(player.Entity, 1)
@@ -40,9 +50,17 @@ local player.storage: storage(player.Entity, 1)
 local idle_animation: AnimationRange = { fps = (1000 / 300), from = 0, to = 1, loop = true, }
 local run_animation : AnimationRange = { fps = (1000 / 100), from = 2, to = 3, loop = true, }
 
+local MIN_X <comptime>, MAX_X <comptime> = 64, 250
+
 function player.Entity:flip()
   self.sprite.flip_h = not self.sprite.flip_h
-  self.collider.hitbox.x = -self.collider.hitbox.x
+  if self.sprite.flip_h then
+    self.ball.position.local_pos.x = -22
+    self.collider.hitbox.x = -19
+  else
+    self.collider.hitbox.x = 11
+    self.ball.position.local_pos.x = 8
+  end
 end
 
 function player.Entity.init(pos: Vec2): player.Entity
@@ -59,7 +77,7 @@ function player.Entity.init(pos: Vec2): player.Entity
       },
 
       collider = {
-        hitbox = { 15, 0 , 15, 15 },
+        hitbox = { 11, -6 , 25, 22 },
       },
 
       sprite = {
@@ -75,6 +93,25 @@ function player.Entity.init(pos: Vec2): player.Entity
 
   player.sprite.offset = { 0, -11 }
 
+  player.ball = {
+    position = {
+      local_pos = {
+        x = 8,
+        y = -8
+      }
+    },
+
+    painter = {
+      active = true,
+      layer = Layer.FgObjects,
+    },
+
+    sprite = {
+      spritesheet = Resources.res.ball,
+      current_animation = { to = 3, fps = 11, loop = true },
+    },
+  }
+
   return player
 end
 
@@ -84,17 +121,38 @@ function player.Entity.spawn(pos: Vec2): (boolean, GenIdx, *player.Entity)
   return ok, id, player
 end
 
+function player.Entity:hit_ball()
+  self.ball.sprite.animation_running = true
+  self.ball.sprite.current_frame = 1
+end
+
+function player.Entity:is_beyond_limits(): boolean
+  local px = self.position:final_pos().x
+  if px < MIN_X then
+    return true
+  elseif px > MAX_X then
+    return true
+  end
+
+  return false
+end
+
 -- player mov system
 local player.MovementSystem = @record{}
 
 local player.MovementSystem.Filter = @record{
   player_comp: *player.Component,
+  position: *Position,
   sprite: *Sprite,
   velocity: *Velocity,
 }
 
 function player.MovementSystem:run(c: player.MovementSystem.Filter, player_entity: *player.Entity)
   local nene = Nene.instance()
+
+  if player_entity.ball.sprite.current_frame == 0 then
+    player_entity.ball.sprite.animation_running = false
+  end
 
   local is_left_held = nene:get_scancode(Nene.Scancode.Left)
   local is_right_held = nene:get_scancode(Nene.Scancode.Right)
@@ -114,7 +172,16 @@ function player.MovementSystem:run(c: player.MovementSystem.Filter, player_entit
     player_entity:flip()
   end
 
-  c.sprite:set_animation(is_on_movement and run_animation or idle_animation, nene.current_time)
+  local px = c.position:final_pos().x
+
+  if player_entity:is_beyond_limits() then
+    if px < MIN_X and c.velocity.final_velocity.x < 0 or px > MAX_X and c.velocity.final_velocity.x > 0 then
+      c.velocity.final_velocity = { x = 0 }
+    end
+    c.sprite:set_animation(idle_animation, nene.current_time)
+  else
+    c.sprite:set_animation(is_on_movement and run_animation or idle_animation, nene.current_time)
+  end
 end
 
 return player

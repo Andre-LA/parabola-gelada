@@ -8,10 +8,24 @@ local Resources = @record{
   loaded: boolean,
 
   player: TextureAtlas,
+  ball: TextureAtlas,
+
+  kid1: TextureAtlas,
+  kid2: TextureAtlas,
+  kid3: TextureAtlas,
+  kid4: TextureAtlas,
+  kid5: TextureAtlas,
+
+  iceman: TextureAtlas,
+  icecar: TextureAtlas,
+
   scenario_bg: TextureAtlas,
+  scenario_bg_clouds: TextureAtlas,
   scenario_bg_sky: TextureAtlas,
 
   flying_food: TextureAtlas,
+  vfx_sand: TextureAtlas,
+  fallen_flying_food: TextureAtlas,
 }
 
 local Resources.res: Resources
@@ -56,9 +70,26 @@ end
 function Resources:load()
   check(not self.loaded, "Cannot load already loaded resources")
 
-  self.player          = load_atlas(#[respath'PersonagemPrincipal.png']#, 2, { cell_size = { 17, 26 } })
-  self.scenario_bg     = load_single_atlas(#[respath'scenario_bg.png']#)
-  self.scenario_bg_sky = load_single_atlas(#[respath'scenario_bg_sky.png']#)
+  self.player = load_atlas(#[respath'PersonagemPrincipal.png']#, 2, { cell_size = { 17, 26 } })
+  self.ball   = load_atlas(#[respath'bola.png']#, 4, { cell_size = { 31, 24 } })
+  self.iceman = load_atlas(#[respath'sorveteiro.png']#, 5, { cell_size = { 19, 39 } })
+  self.icecar = load_single_atlas(#[respath'carrinho.png']#)
+
+
+  self.kid1 = load_atlas(#[respath'crianca01.png']#, 2, { cell_size = { 15, 25 } })
+  self.kid2 = load_atlas(#[respath'crianca02.png']#, 2, { cell_size = { 15, 25 } })
+  self.kid3 = load_atlas(#[respath'crianca03.png']#, 2, { cell_size = { 15, 25 } })
+  self.kid4 = load_atlas(#[respath'crianca04.png']#, 2, { cell_size = { 15, 25 } })
+  self.kid5 = load_atlas(#[respath'crianca05.png']#, 2, { cell_size = { 15, 25 } })
+
+  self.flying_food        = load_atlas(#[respath'sorvetes.png']#, 4, { cell_size = { 9, 21 } })
+  self.vfx_sand           = load_atlas(#[respath'vfx_areia.png']#, 7, { cell_size = { 35, 12 } })
+  self.fallen_flying_food = load_atlas(#[respath'sorvete_caido.png']#, 4, { cell_size = { 25, 18 } })
+
+
+  self.scenario_bg        = load_single_atlas(#[respath'scenario_bg.png']#)
+  self.scenario_bg_clouds = load_single_atlas(#[respath'scenario_bg_clouds.png']#)
+  self.scenario_bg_sky    = load_single_atlas(#[respath'scenario_bg_sky.png']#)
 end
 
 Resources.res:load()

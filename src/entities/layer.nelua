@@ -1,8 +1,12 @@
 local Layer = @enum(byte){
   None = 0,
   ScenarioSky,
+  ScenarioClouds,
   Scenario,
+  BgBgObjects,
+  BgObjects,
   Objects,
+  FgObjects,
   Count,
 }
 

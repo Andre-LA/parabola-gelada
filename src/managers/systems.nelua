@@ -19,11 +19,13 @@ local clients = require 'entities.clients'
 local flying_food = require 'entities.flying_food'
 local Camera = require 'entities.camera'
 local Wallpaper = require 'entities.wallpaper'
+local IceMan = require 'entities.iceman'
 
 -- systems manager
 local Systems = @record{
   movement_system: system(player.MovementSystem.run),
   flying_food_system: system(flying_food.System.run),
+  iceman_system: system(IceMan.System.run),
 
   collision_system: system(CollisionSystem.run),
   gravity_system: system(GravitySystem.run),
@@ -48,6 +50,7 @@ function Systems:run(sysname: string <comptime>, pre_run: boolean <comptime>, po
   self.#|sysname.value|#:run(
     &Camera.storage,
     &Wallpaper.storage,
+    &IceMan.storage,
     &clients.storage,
     &player.storage,
     &flying_food.storage

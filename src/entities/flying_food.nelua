@@ -15,20 +15,32 @@ local GenIdx = require 'rotor.gen_idx'
 -- irene
 local EntityData = require 'irene.components.entity_data'
 local Position = require 'irene.components.position'
+local Painter = require 'irene.components.painter'
+local Sprite = require 'irene.components.sprite'
 local Collider = require 'irene.components.collider'
 local Velocity = require 'irene.components.velocity'
 local Gravity = require 'irene.components.gravity'
 
 -- game
 local settings = require 'settings'
-local EntityMask = require 'entities.mask'
-local BasicEntity = require 'entities.basic_entity'
-local MovableEntity = require 'entities.movable_entity'
+
 local messenger = require 'managers.messenger'
 local Resources = require 'res'
 
+local Layer = require 'entities.layer'
+local EntityMask = require 'entities.mask'
+local BasicEntity = require 'entities.basic_entity'
+local MovableEntity = require 'entities.movable_entity'
+local player = require 'entities.player'
+
 -- flying food namespace
 local flying_food = @record{}
+
+local VfxSand <nickname 'VfxSand'> = @entity(record{
+  position: Position,
+  painter: Painter,
+  sprite: Sprite,
+})
 
 -- flying food component
 local flying_food.Component <nickname 'flying_food.Component'> = @component(record{
@@ -42,17 +54,27 @@ local flying_food.Component <nickname 'flying_food.Component'> = @component(reco
 local flying_food.Entity <nickname 'flying_food.Entity'> = @derived_entity(MovableEntity, record{
   flying_food_comp: flying_food.Component,
   gravity: Gravity,
+  vfx: VfxSand,
 })
 local flying_food.storage: storage(flying_food.Entity, 16)
 
 function flying_food.Entity:fell_on_ground()
   self.flying_food_comp.is_flying = false
 
+  self.position.local_pos.x = self.position.local_pos.x + math.random(-2, 2)
+
+  self.sprite.angle = 0
+  self.sprite.spritesheet = Resources.res.fallen_flying_food
+  self.sprite.offset = { -8 }
+
   self.velocity.active = false
   self.velocity.final_velocity = {}
 
   self.collider.active = false
   self.gravity.active = false
+
+  self.vfx.painter.active = true
+  self.vfx.sprite.animation_running = true
 
   messenger.call'flying_food_fallen'
 
@@ -72,6 +94,13 @@ function flying_food.Entity.on_begin_intersection(collision: Collider.CollisionD
     if ok then
       flying_food_entity.velocity.final_velocity.y = -flying_food_entity.velocity.final_velocity.y
       flying_food_entity.flying_food_comp.vel_x_mul = 1.0
+    end
+
+    local ok, player_entity = player.storage:mget(collision.other.entity_data.id)
+    check(ok, "player couldn't be found")
+
+    if ok then
+      player_entity:hit_ball()
     end
 
   case EntityMask.Clients then
@@ -97,20 +126,42 @@ function flying_food.Entity.init(pos: Vec2): flying_food.Entity
 
       sprite = {
         spritesheet = Resources.res.flying_food,
-        current_animation = { to = 0, fps = 0 }
+        current_frame = math.random(0, 3),
+        rotation_center = { 0.5, 0.5 }
       },
 
       collider = {
-        hitbox = { 0, 0 , 8, 8 },
+        hitbox = {
+          -2, 4,
+          Resources.res.flying_food.grid.cell_size.y - 10,
+          Resources.res.flying_food.grid.cell_size.y - 10
+        },
         intersection_mask = EntityMask.Player | EntityMask.Clients,
         on_begin_intersection = flying_food.Entity.on_begin_intersection,
       },
     },
 
     velocity = {
-      final_velocity = { X_SPEED, -60 }
+      final_velocity = { X_SPEED, -80 }
     },
   })
+
+  flying_food_entity.sprite.animation_running = false
+
+  flying_food_entity.vfx = {
+    position = {
+      local_pos = { -12, 6 }
+    },
+
+    painter = {
+      layer = Layer.BgObjects,
+    },
+
+    sprite = {
+      spritesheet = Resources.res.vfx_sand,
+      current_animation = { to = 6, fps = 8 },
+    },
+  }
 
   flying_food_entity.flying_food_comp = {
     slowdown_mul = 0.99,
@@ -124,8 +175,6 @@ function flying_food.Entity.init(pos: Vec2): flying_food.Entity
     direction = { 0, 1 },
     acceleration = 60,
   }
-
-  flying_food_entity.painter.active = false
 
   return flying_food_entity
 end
@@ -161,11 +210,11 @@ function flying_food.System:run(c: flying_food.System.Filter, flying_food_entity
   c.flying_food_comp.vel_x_mul = math.clamp(c.flying_food_comp.vel_x_mul * c.flying_food_comp.slowdown_mul, 0.0, 1.0)
 
   -- detect if it fell on ground
-  if c.position:final_pos().y > settings.screen_size.y - 6 then
+  if c.position:final_pos().y > settings.screen_size.y - 36 then
     flying_food_entity:fell_on_ground()
   else
   -- otherwise, rotate
-    flying_food_entity.sprite.angle = flying_food_entity.sprite.angle + 1 * nene.delta_time
+    flying_food_entity.sprite.angle = flying_food_entity.sprite.angle + 128 * nene.delta_time
   end
 end
 

@@ -42,6 +42,8 @@ local BasicEntity.Inputs = @record{
   sprite: record{
     spritesheet: TextureAtlas,
     current_animation: AnimationRange,
+    current_frame: usize,
+    rotation_center: Vec2,
   },
   collider: record{
     hitbox: Rect,
@@ -68,6 +70,8 @@ function BasicEntity.derived_init(basic_entity: a_basic_entity_ptr, inputs: Basi
     spritesheet = inputs.sprite.spritesheet,
     current_animation = inputs.sprite.current_animation,
     animation_running = true,
+    current_frame = inputs.sprite.current_frame,
+    rotation_center = inputs.sprite.rotation_center,
   }
 
   basic_entity.collider = {

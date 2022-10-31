@@ -19,7 +19,7 @@ local Sprite = require 'irene.components.sprite'
 local Layer = require 'entities.layer'
 
 -- wallpaper entity
-local Wallpaper = @entity(record{
+local Wallpaper <nickname 'Wallpaper'> = @entity(record{
   position: Position,
   painter: Painter,
   sprite: Sprite,
